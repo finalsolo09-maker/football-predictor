@@ -8,14 +8,40 @@ class AutoFootballPredictor:
         self.n_sims = n_sims
 
     def fetch_todays_fixtures(self):
-        # [실전 팁] 이 부분에 무료 API(football-data.org 등)나 크롤링 코드를 넣습니다.
-        # 예시를 위해 오늘 예정된 가상의 경기 리스트를 만듭니다.
-        todays_matches = [
-            {"home_team": "Arsenal", "away_team": "Chelsea", "home_xG": 1.9, "away_xG": 1.1},
-            {"home_team": "Liverpool", "away_team": "Man City", "home_xG": 1.6, "away_xG": 1.7},
-        ]
-        return todays_matches
+import requests
+import pandas as pd
 
+API_KEY = "YOUR_API_TOKEN_HERE"  # 발급받은 API 토큰 입력
+HEADERS = {"X-Auth-Token": API_KEY}
+
+def get_upcoming_matches(competition_code="PL"):
+    """
+    지정한 리그의 예정된 경기 일정을 가져옵니다.
+    - PL: 프리미어리그, PD: 라리가, CL: 챔피언스리그 등
+    """
+    url = f"https://api.football-data.org/v4/competitions/{competition_code}/matches?status=SCHEDULED"
+    response = requests.get(url, headers=HEADERS)
+    
+    if response.status_code == 200:
+        data = response.json()
+        matches = []
+        for match in data.get('matches', []):
+            matches.append({
+                'match_id': match['id'],
+                'date': match['utcDate'],
+                'home_team': match['homeTeam']['name'],
+                'away_team': match['awayTeam']['name'],
+                'matchday': match.get('matchday')
+            })
+        return pd.DataFrame(matches)
+    else:
+        print(f"API 요청 실패 (상태 코드: {response.status_code}): {response.text}")
+        return pd.DataFrame()
+
+# 실행 예시
+if __name__ == "__main__":
+    df_fixtures = get_upcoming_matches("PL") # 프리미어리그 예정 경기 수집
+    print(df_fixtures.head())
     def simulate_match(self, home_xg, away_xg):
         # 몬테카를로 시뮬레이션
         home_goals = np.random.poisson(max(home_xg, 0.2), self.n_sims)
