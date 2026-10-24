@@ -28,3 +28,32 @@ if st.button("경기 예측 시작하기"):
     st.subheader("🎯 가장 확률 높은 예상 스코어 Top 3")
     for score, prob in result['Top Scores']:
         st.write(f"- **{score[0]} : {score[1]}** (확률: {prob}%)")
+import streamlit as st
+import sqlite3
+import pandas as pd
+
+st.set_page_config(page_title="축구 경기 자동 예측 파이프라인", layout="wide")
+st.title("⚽ 축구 경기 실시간 예측 DB 대시보드")
+
+def load_data():
+    conn = sqlite3.connect("data/predictions.db")
+    df = pd.read_sql_query("SELECT * FROM predictions ORDER BY id DESC", conn)
+    conn.close()
+    return df
+
+try:
+    df_preds = load_data()
+    st.subheader("📊 최근 자동 계산된 경기 예측 결과")
+    st.dataframe(df_preds, use_container_width=True)
+
+    if not df_preds.empty:
+        st.subheader("🎯 최신 매치업 상세 카드")
+        latest = df_preds.iloc[0]
+        col1, col2, col3 = st.columns(3)
+        col1.metric(f"🏠 {latest['home_team']} 승리", f"{latest['home_win_prob']}%")
+        col2.metric("🤝 무승부", f"{latest['draw_prob']}%")
+        col3.metric(f"✈️ {latest['away_team']} 승리", f"{latest['away_win_prob']}%")
+        st.info(f"💡 기대 득점(xG) -> {latest['home_team']}: {latest['lambda_home']} | {latest['away_team']}: {latest['lambda_away']}")
+        st.write(f"🏆 상위 예상 스코어: {latest['top_scores']}")
+except Exception as e:
+    st.warning("아직 데이터베이스에 누적된 예측 결과가 없습니다. main.py를 실행해주세요.")
